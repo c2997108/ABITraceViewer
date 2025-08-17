@@ -1,18 +1,16 @@
-ABI Trace Viewer (Local Mirror + API)
+ABI Trace Viewer
 
-このリポジトリは、以下をローカル/社内で再現・提供するための一式です。
-- chiplot.online の AB1 ビューアページをローカルにミラーした静的ファイル
-- サンガーシーケンスの `.ab1` ファイルを解析し、波形/配列情報を返すAPI（Flask）
+<img width="504" alt="image" src="https://github.com/user-attachments/assets/2e77b7a8-17a3-4f7e-afa4-b4b8f82e18f8" />
+
+このリポジトリは、以下を提供するための一式です。
+- サンガーシーケンスの `.ab1` ファイルを解析し、WEBブラウザ上で波形/配列情報を表示します
 - Apache のサブディレクトリ（`/abi`）配下で動作するように調整済みのフロントエンド
 
 概要
 - ブラウザで AB1 ファイルをドラッグ&ドロップして、ピーク波形と配列（FASTA）を表示
-- API: `/abi/xiaochi/gettoken`（ダミー）、`/abi/ChiBioTools/getAb1Data`（AB1解析）
-- オリジナルと区別しやすい軽いデザイン変更（背景/見出し/ボタン等）
 
 ディレクトリ構成
 - `ab1_site/server.py`: Flask アプリ（静的配信 + API）。`/abi` 配下にマウント。
-- `ab1_site/site_root/www.chiplot.online/`: ミラーしたフロントの静的ファイル群。
 - `ab1_site/DEPLOY.md`: サーバ（別環境）への導入手順の詳細ドキュメント。
 
 クイックスタート（ローカル）
@@ -76,6 +74,6 @@ Apache のサブディレクトリ `/abi` での公開
 - 一部 AB1 のトレースタグ差異で波形抽出が空になる場合があります（典型は DATA9–12, フォールバック DATA1–4）。その際は `server.py` のタグ解決を調整してください。
 
 ライセンス / 出典
-- 元ページは chiplot.online の公開ページをもとにミラーしています。社内/閉域での利用を想定しています。
+- 元ページは chiplot.online の公開ページをもとに作成しています。社内/閉域での利用を想定しています。
 - 本リポジトリ内のコードは当該用途（内部利用）向けに最小限に再構成したものです。
 
