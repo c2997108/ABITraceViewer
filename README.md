@@ -67,6 +67,12 @@ Apache のサブディレクトリ `/abi` での公開
 - gunicorn: `-b 127.0.0.1:8080` に変更。
 - Apache の `ProxyPass` 転送先ポートも合わせてください。
 
+自動起動手順 (server.pyのport 8000をport 8080に変更した場合)
+- `sudo cp ab1_site/systemd/abi.service /etc/systemd/system/abi.service`
+- `sudo systemctl daemon-reload`
+- `sudo systemctl enable --now abi.service`
+- 確認: `systemctl status abi.service`
+
 トラブルシュート
 - 500 エラー時はアプリログを確認:
   - 開発起動: `/tmp/ab1_flask.log`
