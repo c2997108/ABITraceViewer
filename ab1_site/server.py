@@ -150,5 +150,5 @@ def parse_ab1(stream: io.BufferedIOBase, filename: str) -> Dict:
 
 if __name__ == '__main__':
     app = create_app()
-    # Bind to 0.0.0.0:8000 to match earlier static server
-    app.run(host='0.0.0.0', port=8000, debug=False)
+    # Bind to 0.0.0.0:8080 to match earlier static server
+    app.run(host='0.0.0.0', port=8080, debug=False)
