@@ -97,7 +97,8 @@ def parse_ab1(stream: io.BufferedIOBase, filename: str) -> Dict:
     bases = abif.get('PBAS2') or abif.get('PBAS1') or b''
     if isinstance(bases, bytes):
         bases = bases.decode(errors='ignore')
-    bases = ''.join(ch for ch in bases if ch in 'GATC')
+    # Keep IUPAC codes including ambiguity (e.g., N, R, Y, ...). Upper-case and filter to letters only.
+    bases = ''.join(ch for ch in bases if ch.isalpha()).upper()
 
     positions = abif.get('PLOC2') or abif.get('PLOC1') or []
     try:
