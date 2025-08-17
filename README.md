@@ -1,4 +1,4 @@
-ABI Trace Viewer
+# ABI Trace Viewer
 
 <img width="504" alt="image" src="https://github.com/user-attachments/assets/2e77b7a8-17a3-4f7e-afa4-b4b8f82e18f8" />
 
