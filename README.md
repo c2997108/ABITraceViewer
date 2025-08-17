@@ -68,6 +68,7 @@ Apache のサブディレクトリ `/abi` での公開
 - Apache の `ProxyPass` 転送先ポートも合わせてください。
 
 自動起動手順 (server.pyのport 8000をport 8080に変更した場合)
+- `source ab1_site/.venv/bin/activate & pip install gunicorn`
 - `sudo cp ab1_site/systemd/abi.service /etc/systemd/system/abi.service`
 - `sudo systemctl daemon-reload`
 - `sudo systemctl enable --now abi.service`
