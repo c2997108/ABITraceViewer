@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>ABI Trace Viewer</title>
+    <link rel="shortcut icon" href="/abi/static/ChiBioTools/favicon.ico" type="image/x-icon" />
+    <script src="/abi/vendor/vue.global.js"></script>
+<!--    <link rel="stylesheet" type="text/css" href="/static/css/plotStyle.css">-->
+
+    <script src="/abi/static/js/d3.v6.min.js"></script>
+    <script src="/abi/vendor/axios.min.js"></script>
+
+</head>
+<script>
+  // 静的ホスティング時のベースパス（相対パスで空文字）
+  window.API_BASE = '/abi'
+  window.ASSET_BASE = '/abi'
+  console.log('Using base path', window.API_BASE)
+</script>
+<style>
+    *{margin: 0px;
+        font-family: Arail,'Liberation Mono', Menlo, Courier, monospace;
+    }
+    body{
+        background: linear-gradient(135deg, #f6f8fb 25%, #eef2f7 25%, #eef2f7 50%, #f6f8fb 50%, #f6f8fb 75%, #eef2f7 75%);
+        background-size: 24px 24px;
+        color: #0f172a;
+    }
+    .app-header{
+        position: sticky;
+        top: 0;
+        z-index: 100;
+        width: 100%;
+        background: #0f172a;
+        color: #fff;
+        padding: 14px 20px;
+        font-size: 18px;
+        letter-spacing: .5px;
+        box-shadow: 0 2px 12px rgba(0,0,0,.15);
+    }
+    .ab1-svg-figure-box{
+        width: 100%;
+        overflow: scroll;
+    }
+    #base-info-box{
+        position: fixed;
+        display: none;
+        font-size: 12px;
+
+    }
+    #base-symbol-box{
+        border-bottom-left-radius: 4px;
+        border-top-left-radius: 4px;
+        padding: 2px;
+        color: white;
+    }
+    #base-quality-box{
+        border-bottom-right-radius: 4px;
+        border-top-right-radius: 4px;
+        background-color: #779ced;
+        color: white;
+        padding: 2px;
+    }
+    #ab1-file-drag-box{
+        color: #334155;
+        background-color: #ffffff;
+        width: 80%;
+        margin: 16px auto 0 auto;
+        text-align: center;
+        height: 180px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        border-radius: 12px;
+        cursor: pointer;
+        border: 2px dashed #64748b;
+        box-shadow: 0 8px 24px rgba(15,23,42,0.06);
+        transition: border-color .2s ease, box-shadow .2s ease, transform .2s ease;
+    }
+    #ab1-file-drag-box:hover{
+        border-color: #0ea5e9;
+        box-shadow: 0 12px 28px rgba(15,23,42,0.10);
+        transform: translateY(-1px);
+    }
+    .loading::before {
+        content: " ";
+        display: inline-block;
+        width: 80px;
+        height: 80px;
+        vertical-align: middle;
+        margin: auto;
+        -webkit-animation: wx-button-loading-animate 1s steps(12,end) infinite;
+        animation: cuIcon-spin 1s steps(12,end) infinite;
+        background-size: 100%;
+
+        background-image: url(data:image/svg+xml;base64,PHN2ZyBjbGFzcz0iciIgd2lkdGg9JzEyMHB4JyBoZWlnaHQ9JzEyMHB4JyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj4KICAgIDxyZWN0IHg9IjAiIHk9IjAiIHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIiBmaWxsPSJub25lIiBjbGFzcz0iYmsiPjwvcmVjdD4KICAgIDxyZWN0IHg9JzQ2LjUnIHk9JzQwJyB3aWR0aD0nNycgaGVpZ2h0PScyMCcgcng9JzUnIHJ5PSc1JyBmaWxsPScjRTlFOUU5JwogICAgICAgICAgdHJhbnNmb3JtPSdyb3RhdGUoMCA1MCA1MCkgdHJhbnNsYXRlKDAgLTMwKSc+CiAgICA8L3JlY3Q+CiAgICA8cmVjdCB4PSc0Ni41JyB5PSc0MCcgd2lkdGg9JzcnIGhlaWdodD0nMjAnIHJ4PSc1JyByeT0nNScgZmlsbD0nIzk4OTY5NycKICAgICAgICAgIHRyYW5zZm9ybT0ncm90YXRlKDMwIDUwIDUwKSB0cmFuc2xhdGUoMCAtMzApJz4KICAgICAgICAgICAgICAgICByZXBlYXRDb3VudD0naW5kZWZpbml0ZScvPgogICAgPC9yZWN0PgogICAgPHJlY3QgeD0nNDYuNScgeT0nNDAnIHdpZHRoPSc3JyBoZWlnaHQ9JzIwJyByeD0nNScgcnk9JzUnIGZpbGw9JyM5Qjk5OUEnCiAgICAgICAgICB0cmFuc2Zvcm09J3JvdGF0ZSg2MCA1MCA1MCkgdHJhbnNsYXRlKDAgLTMwKSc+CiAgICAgICAgICAgICAgICAgcmVwZWF0Q291bnQ9J2luZGVmaW5pdGUnLz4KICAgIDwvcmVjdD4KICAgIDxyZWN0IHg9JzQ2LjUnIHk9JzQwJyB3aWR0aD0nNycgaGVpZ2h0PScyMCcgcng9JzUnIHJ5PSc1JyBmaWxsPScjQTNBMUEyJwogICAgICAgICAgdHJhbnNmb3JtPSdyb3RhdGUoOTAgNTAgNTApIHRyYW5zbGF0ZSgwIC0zMCknPgogICAgPC9yZWN0PgogICAgPHJlY3QgeD0nNDYuNScgeT0nNDAnIHdpZHRoPSc3JyBoZWlnaHQ9JzIwJyByeD0nNScgcnk9JzUnIGZpbGw9JyNBQkE5QUEnCiAgICAgICAgICB0cmFuc2Zvcm09J3JvdGF0ZSgxMjAgNTAgNTApIHRyYW5zbGF0ZSgwIC0zMCknPgogICAgPC9yZWN0PgogICAgPHJlY3QgeD0nNDYuNScgeT0nNDAnIHdpZHRoPSc3JyBoZWlnaHQ9JzIwJyByeD0nNScgcnk9JzUnIGZpbGw9JyNCMkIyQjInCiAgICAgICAgICB0cmFuc2Zvcm09J3JvdGF0ZSgxNTAgNTAgNTApIHRyYW5zbGF0ZSgwIC0zMCknPgogICAgPC9yZWN0PgogICAgPHJlY3QgeD0nNDYuNScgeT0nNDAnIHdpZHRoPSc3JyBoZWlnaHQ9JzIwJyByeD0nNScgcnk9JzUnIGZpbGw9JyNCQUI4QjknCiAgICAgICAgICB0cmFuc2Zvcm09J3JvdGF0ZSgxODAgNTAgNTApIHRyYW5zbGF0ZSgwIC0zMCknPgogICAgPC9yZWN0PgogICAgPHJlY3QgeD0nNDYuNScgeT0nNDAnIHdpZHRoPSc3JyBoZWlnaHQ9JzIwJyByeD0nNScgcnk9JzUnIGZpbGw9JyNDMkMwQzEnCiAgICAgICAgICB0cmFuc2Zvcm09J3JvdGF0ZSgyMTAgNTAgNTApIHRyYW5zbGF0ZSgwIC0zMCknPgogICAgPC9yZWN0PgogICAgPHJlY3QgeD0nNDYuNScgeT0nNDAnIHdpZHRoPSc3JyBoZWlnaHQ9JzIwJyByeD0nNScgcnk9JzUnIGZpbGw9JyNDQkNCQ0InCiAgICAgICAgICB0cmFuc2Zvcm09J3JvdGF0ZSgyNDAgNTAgNTApIHRyYW5zbGF0ZSgwIC0zMCknPgogICAgPC9yZWN0PgogICAgPHJlY3QgeD0nNDYuNScgeT0nNDAnIHdpZHRoPSc3JyBoZWlnaHQ9JzIwJyByeD0nNScgcnk9JzUnIGZpbGw9JyNEMkQyRDInCiAgICAgICAgICB0cmFuc2Zvcm09J3JvdGF0ZSgyNzAgNTAgNTApIHRyYW5zbGF0ZSgwIC0zMCknPgogICAgPC9yZWN0PgogICAgPHJlY3QgeD0nNDYuNScgeT0nNDAnIHdpZHRoPSc3JyBoZWlnaHQ9JzIwJyByeD0nNScgcnk9JzUnIGZpbGw9JyNEQURBREEnCiAgICAgICAgICB0cmFuc2Zvcm09J3JvdGF0ZSgzMDAgNTAgNTApIHRyYW5zbGF0ZSgwIC0zMCknPgogICAgPC9yZWN0PgogICAgPHJlY3QgeD0nNDYuNScgeT0nNDAnIHdpZHRoPSc3JyBoZWlnaHQ9JzIwJyByeD0nNScgcnk9JzUnIGZpbGw9JyNFMkUyRTInCiAgICAgICAgICB0cmFuc2Zvcm09J3JvdGF0ZSgzMzAgNTAgNTApIHRyYW5zbGF0ZSgwIC0zMCknPgogICAgPC9yZWN0Pgo8L3N2Zz4=);
+
+    }
+    @keyframes cuIcon-spin {
+        0% {
+            -webkit-transform: rotate(0);
+            transform: rotate(0);
+        }
+
+        100% {
+            -webkit-transform: rotate(359deg);
+            transform: rotate(359deg);
+        }
+    }
+    #container{
+        width: 96%;
+        max-width: 1200px;
+        margin: 20px auto;
+    }
+    .section_title{
+        padding: 10px 14px;
+        font-size: 18px;
+        background-color: #0ea5e9;
+        color: white;
+        margin: 24px auto 8px auto;
+        font-weight: 600;
+        border-radius: 8px;
+        box-shadow: 0 4px 10px rgba(2,132,199,0.25);
+    }
+    td {border:1px solid #dddddd;padding:5px;font-size:12px;}
+    .col1{
+        font-weight: bold;
+    }
+    table {
+        border:1px solid #e2e8f0;
+        padding:2px;
+        border-collapse:collapse;
+        width:100%;
+        margin-top: 12px;
+        background: #fff;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 6px 20px rgba(2,6,23,0.05);
+    }
+    .sequence-box{
+        width: 100%;
+        margin-top: 16px;
+        border-radius: 10px;
+        background-color: #0b1220;
+        overflow: auto;
+        box-shadow: 0 10px 24px rgba(2,6,23,0.25);
+    }
+    .sequence-box button{
+        float: right;
+        margin-top:10px;
+        margin-right:10px;
+        display:inline-flex;
+        justify-content:center;
+        align-items:center;
+        height:30px;
+        cursor:pointer;
+        font-size:12px;
+        padding:0 12px;
+        border:none;
+        border-radius:999px;
+        color:#0b1220;
+        background-color:#67e8f9;
+        box-shadow:0 2px 0 0 rgba(0,0,0,.15);
+        font-weight: 600;
+    }
+    pre{
+        color: #e2e8f0;
+        padding: 14px;
+        font-size: 12px;
+        line-height: 1.4;
+    }
+    #tip-box{
+        padding: 8px 12px;
+        min-width: 160px;
+        font-size: 14px;
+        background-color: #22c55e;
+        color: #052e12;
+        box-shadow: 0 10px 24px rgba(2,6,23,0.25);
+        position: fixed;
+        text-align: center;
+        left: 50%;
+        margin-left: -80px;
+        top: -50px;
+        border-radius: 999px;
+    }
+    /* QR footer removed */
+</style>
+<body>
+<header class="app-header">ABI Trace Viewer</header>
+<div id="base-info-box">
+    <div id="base-symbol-box">A939</div>
+    <div id="base-quality-box">ピーク高：1197 品質：33</div>
+</div>
+<div id="ab1-file-drag-box" >
+    <h1 style="margin-top: 10px;">Drag and drop or click here</h1>
+    to view ab1 file from your computer.
+</div>
+<div id="tip-box">Copy succeeded</div>
+<div id="container">
+    <div class="section_title" >Summary</div>
+
+    <table >
+        <tbody id="summary-table-body"></tbody>
+    </table>
+
+    <div class="section_title" >Peak figure</div>
+
+    <div class="ab1-svg-figure-box">
+        <svg id="svg" height="0" style="margin-top: 20px;background-color: white;"></svg>
+    </div>
+
+    <div class="section_title" >Sequence (FASTA)</div>
+    <div class="sequence-box">
+        <button id="copy-btn" type="button" aria-label="Copy sequence">Copy FASTA</button>
+        <pre class="line-numbers  language-bash"><code id="code-box"></code>
+    </pre>
+    </div>
+
+</div>
+<div style="height: 20px;opacity: 0;"></div>
+
+
+</body>
+<script type="module">
+
+    import {FileManager} from "/abi/static/xiaochiPlot/js/filemanager.js"
+    import {Http} from "/abi/static/xiaochiPlot/js/http.js"
+    import {parseAb1} from "/abi/static/xiaochiPlot/js/abif.js"
+
+
+    class AB1 {
+        constructor() {
+            this.plotType = "kegg"
+        this.uploadAb1File()
+            this.fileManager = new FileManager()
+            this.http = new Http()
+
+            // クライアント完結のためトークン取得は不要
+
+
+            this.svg = d3.select("#svg");
+            this.tbody = d3.select("#summary-table-body");
+
+
+
+        }
+        init(data){
+
+            console.log(data)
+
+            this.svg.text("")
+
+            this.ab1Data = data
+
+            // 描画キャンバスの定義
+            this.width = this.ab1Data.peakData.length;
+            this.height = 300;
+            this.margin = {top:10, left:10, bottom:80, right:10}
+            this.innerwidth = this.width - this.margin.left - this.margin.right
+            this.innerHeight = this.height - this.margin.top - this.margin.bottom
+            this.svg.attr("xmlns","http://www.w3.org/2000/svg")
+                .attr("xmlns:xlink","http://www.w3.org/1999/xlink")
+                .attr('viewBox',`0 0 ${this.width} ${this.height}`)
+                .attr("width",this.width)
+                .attr("height",this.height)
+
+
+            // 主描画グループを作成
+            this.maingroup = this.svg.append('g').attr('id',"maingroup")
+                .attr('transform',`translate(${this.margin.left},${this.margin.top})`)
+
+            // 色マップを作成
+            this.colorScale = d3.scaleOrdinal()
+                .domain(this.ab1Data.peakData.channels)
+                .range(["#121112", "#35ce36", "#fc4136", "#4169e0" ])
+
+            this.addAxis()
+            this.drawArea()
+            this.drawBar()
+            this.drawSummaryTable()
+
+
+
+
+
+        }
+        uploadAb1File(){
+            const self = this
+            let file_drag_box = d3.select("#ab1-file-drag-box")
+
+            async function request(fileList) {
+                try {
+                    file_drag_box.classed("loading", true)
+                    const file = fileList[0]
+                    const buf = await file.arrayBuffer()
+                    const parsed = parseAb1(new Uint8Array(buf), file.name)
+                    parsed.baseData = d3.tsvParse(parsed.baseData, d3.autoType)
+                    self.init(parsed)
+                } catch (err) {
+                    console.error(err)
+                } finally {
+                    file_drag_box.classed("loading", false)
+                }
+            }
+
+            file_drag_box
+            .on("click",function (){
+                console.log("uploadfile")
+              self.fileManager.openFile({
+                  multiple:false,
+                  types: [
+                      {
+                          description: 'ab1',
+                          accept: {
+                              'ab1/*': ['.ab1']
+                          }
+                      },
+                  ],
+              }).then(fileList=>{
+
+                  request(fileList)
+
+
+
+              })
+
+
+            })
+            .on("dragover",function (e){
+                e.preventDefault();// これが無いと drop が発火しない
+                  // ドラッグ中は枠線色を変更
+                this.style.borderColor = '#ccc';
+            }).on("dragleave",function (e){
+
+                    e.preventDefault();
+                this.style.borderColor = '#eee';
+            })
+            .on("drop",function (e){
+
+                e.preventDefault();
+                let fileList = e.dataTransfer.files;
+               request(fileList)
+                this.style.borderColor = '#eee';
+
+
+            })
+
+        }
+
+        addAxis(){
+
+            let x_max = this.ab1Data.peakData.length
+            // let x_max = 100 // デバッグ用の最大 x（固定値）
+
+            let y_max = d3.max(this.ab1Data.peakData.channels.map(c=>{
+                return d3.max(this.ab1Data.peakData[c])
+            }))
+
+            console.log(x_max,y_max)
+
+
+            // 座標軸の作成（x/y）
+            const xScale = d3.scaleLinear().domain([0,x_max]).range([0,this.innerwidth]);
+
+            const yScale = d3.scaleLinear().domain([y_max, 0]).range([0, this.innerHeight]);
+
+            this.xScale = xScale
+            this.yScale = yScale
+
+            // 座標軸の作成（x/y）
+            const yAxis = d3.axisLeft(yScale).tickSizeOuter(0);
+            const xAxis = d3.axisBottom(xScale).tickSizeOuter(0);
+
+
+
+
+
+
+            // const xAxisGroup = this.maingroup.append('g').call(xAxis).attr('id','xAxis').attr('transform',`translate(0,${this.innerHeight})`)
+
+
+
+            // const yAxisGroup = this.maingroup.append('g').call(yAxis).attr('id','yAxis');
+
+
+
+
+
+
+
+        }
+        drawArea(){
+            const area = d3.area()
+            .x((d,i)=>this.xScale(i))
+            .y0(this.yScale(0))
+            .y1((d,i)=>this.yScale(d))
+
+
+
+            const areaG = this.maingroup.append("g")
+
+            this.ab1Data.peakData.channels.forEach(channel=>{
+            areaG.append("path")
+                    .datum(this.ab1Data.peakData[channel])
+                    .attr('d',area)
+                    .attr('fill',this.colorScale(channel))
+                    .attr('fill-opacity',"0.2")
+                    .attr('stroke',this.colorScale(channel))
+            })
+
+            const baseSymbolG = this.maingroup.append("g")
+
+
+
+            this.baseColorScale = d3.scaleOrdinal()
+                .domain(["G", "A", "T", "C"])
+                .range(["#121112", "#35ce36", "#fc4136", "#4169e0" ])
+
+            baseSymbolG.selectAll("basetext")
+                .data(this.ab1Data.baseData)
+                .join("text")
+                .text(d=>d.base_symbol)
+                .attr("x",d=>this.xScale(d.base_location))
+                .attr("font-size",10)
+                .attr("text-anchor", "middle")
+                .attr("fill", d=>this.baseColorScale(d.base_symbol))
+
+
+
+
+        }
+        drawBar(){
+            const self = this
+            let barWidth = 6
+            let barPlotHeight = 60
+            let yScale = d3.scaleLinear().domain([0, d3.max(this.ab1Data.baseData, d=>d.base_quality)*1.1].reverse()).range([0,barPlotHeight])
+
+            const barPlotG = this.maingroup.append("g")
+                .attr("transform",`translate(0,${this.innerHeight})`)
+
+            // const yAxis = d3.axisLeft(yScale).ticks(4)
+            // barPlotG.append("g").call(yAxis) // 必要に応じて品質バー軸を表示
+
+                const rectG = barPlotG
+            .selectAll("qualityBar")
+            .data(this.ab1Data.baseData)
+            .join("rect")
+            .attr("x",d=>this.xScale(d.base_location)-barWidth/2)
+            .attr("y",d=>yScale(d.base_quality))
+            .attr("width",barWidth)
+            .attr("height",d=>barPlotHeight-yScale(d.base_quality))
+            .attr("fill","#a0a09f")
+
+            barPlotG
+                .selectAll("barindex")
+                .data(this.ab1Data.baseData.filter((d,i)=>i%30==0))
+                .join("text")
+            .text(d=>self.ab1Data.baseData.indexOf(d)+1)
+            .attr("fill","black")
+                .attr("x",d=>this.xScale(d.base_location))
+                .attr("y",barPlotHeight+10)
+                .attr("text-anchor", "middle")
+                .attr("font-size",10)
+
+
+            let base2channels = d3.scaleOrdinal()
+                .domain(["G", "A", "T", "C"])
+                .range(this.ab1Data.peakData.channels)
+
+            rectG.clone()
+                .attr("y",-this.innerHeight)
+            .attr("height",this.innerHeight+barPlotHeight)
+                .attr("fill","black")
+                .attr("fill-opacity",0)
+
+            .on("mouseover",function (e){
+                    let clientX = e.clientX
+                    let clientY = e.clientY
+
+                if(clientX+170>window.innerWidth){
+                    clientX -= 190
+                }
+                let data = d3.select(this).data()[0]
+                d3.select(this)
+                    .attr("fill-opacity",0.2)
+
+                    d3.select("#base-info-box")
+                    .style("display",`flex`)
+                    .style("left",`${clientX+20}px`)
+                    .style("top",`${clientY-20}px`)
+
+                d3.select("#base-symbol-box")
+                .text(`${data.base_symbol}${self.ab1Data.baseData.indexOf(data)+1}`)
+                .style("background-color", d3.color(self.baseColorScale(data.base_symbol)).formatRgb().replace(")",",0.8)").replace("rgb","rgba"))
+
+                d3.select("#base-quality-box")
+                .text(`ピーク高：${self.ab1Data.peakData[base2channels(data.base_symbol)][data.base_location]} 品質：${data.base_quality}`)
+            })
+            .on("mouseleave",function (){
+                    d3.select(this)
+                        .attr("fill-opacity",0)
+
+                d3.select("#base-info-box")
+                    .style("display",`none`)
+
+
+                })
+
+
+        }
+        drawSummaryTable(){
+            this.tbody.text("")
+            this.tbody.selectAll("tr")
+            .data(this.ab1Data.summary)
+            .join("tr")
+            .each(function (d){
+                let tr =  d3.select(this)
+                for(let k in d){
+                    tr.append("td").text(`${k}:`).attr("class","col1")
+                    tr.append("td").text(d[k])
+                }
+
+            })
+            d3.select("#code-box").text(`>${this.ab1Data.summary[0]["file name"]}\n`+this.ab1Data.baseData.map((d,i)=>{
+                return `${d.base_symbol}${(i+1)%80==0?"\n":""}`
+            }).join(""))
+            d3.select("#copy-btn").on("click",function (){
+                navigator.clipboard.writeText(d3.select("#code-box").text()).then(res=>{
+                    d3.select("#tip-box")
+                        .style("top","-50px")
+                        .style("opacity",0)
+                        .transition()
+                        .ease(d3.easeBounceOut)
+                        .duration(600)
+                        .style("top","100px")
+                        .style("opacity",1)
+                        .transition()
+                        .duration(600)
+                        .ease(d3.easeCubicIn)
+                        .style("opacity",0)
+                        .transition()
+                        .duration(600)
+                        .style("top","-50px")
+
+                })
+            })
+
+        }
+
+
+
+
+
+
+    }
+
+    const ab1  = new AB1()
+
+
+</script>
+</html>

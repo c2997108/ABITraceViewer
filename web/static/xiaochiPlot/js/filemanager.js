@@ -17,6 +17,7 @@ class FileManager {
 
 
 
+        // 古いブラウザ向け: input[type=file] を使ったフォールバック
         function oldOpen(){
             return new Promise((resolve, reject) => {
                 let input = document.createElement("input")
@@ -28,7 +29,7 @@ class FileManager {
                     input.accept = accept.join(",")
                 }
                 input.addEventListener("change", e => {
-                    //适配safari浏览器
+                    // Safari 対応（event.target が無いケースを考慮）
                     let fileList = e.target ? e.target.files : e.path[0].files
                     resolve(fileList)
 
@@ -40,9 +41,9 @@ class FileManager {
         }
 
 
-            //检查有没有本地文件操作API
+            // File System Access API が利用可能か判定
             if(window.showOpenFilePicker){
-                console.log("本地文件操作API正常")
+                console.log("File System Access API を使用します")
                 let fileHandleList = await window.showOpenFilePicker(OpenFilePickerOptions);
                 let fileList = []
 
@@ -70,10 +71,10 @@ class FileManager {
         reader.onload = function (e) {
 
             let el = document.createElement('a')
-            //链接赋值
+            // ダウンロードリンクの設定
             el.href = e.target.result
             el.download = fileName
-            //必须点击否则不会下载
+            // クリックさせて保存を実行
 
             el.click()
         }
@@ -91,12 +92,12 @@ class FileManager {
                     let csvString = XLSX.utils.sheet_to_csv(workbook.Sheets[sheetName])
 
                     if(csvString.startsWith(",")){
-                        //    有些人第一列不填id
+                        // 先頭列が空（ID無記入）ケースの簡易補正
                         csvString = "sample_id" + csvString
                     }
-                    //$2 代表第二个括号内容，去掉空行、空列
+                    // $2 は 2 番目の丸括弧の内容。空行・空列を削除
                     csvString = csvString.replace(/(,+)(\n)/g,"$2")
-                    //去掉结尾连续换行
+                    // 末尾の連続改行を削除
                     csvString = csvString.replace(/\n+$/g,"\n")
 
                     sheetDataArr.push({
@@ -138,7 +139,7 @@ class FileManager {
 
                 break;
             case "xls":
-                //旧版excel
+                // 旧形式の Excel
                 d3_file_reader = this.readExcel(file)
                 break;
 

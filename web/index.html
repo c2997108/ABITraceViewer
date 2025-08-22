@@ -3,18 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <title>ABI Trace Viewer</title>
-    <link rel="shortcut icon" href="/abi/static/ChiBioTools/favicon.ico" type="image/x-icon" />
-    <script src="/abi/vendor/vue.global.js"></script>
-<!--    <link rel="stylesheet" type="text/css" href="/static/css/plotStyle.css">-->
+    <link rel="shortcut icon" href="static/ChiBioTools/favicon.ico" type="image/x-icon" />
+    <script src="vendor/vue.global.js"></script>
+<!-- スタイルを追加する場合は下記を使用
+<link rel="stylesheet" type="text/css" href="static/css/plotStyle.css">
+-->
 
-    <script src="/abi/static/js/d3.v6.min.js"></script>
-    <script src="/abi/vendor/axios.min.js"></script>
+    <script src="static/js/d3.v6.min.js"></script>
+    <script src="vendor/axios.min.js"></script>
 
 </head>
 <script>
-  // Base path when hosted under Apache subdirectory
-  window.API_BASE = '/abi'
-  window.ASSET_BASE = '/abi'
+  // 静的ホスティング時のベースパス（相対パスで空文字）
+  window.API_BASE = ''
+  window.ASSET_BASE = ''
   console.log('Using base path', window.API_BASE)
 </script>
 <style>
@@ -184,13 +186,13 @@
         top: -50px;
         border-radius: 999px;
     }
-    /* QR footer removed */
+    /* 旧フッター（QR）は削除 */
 </style>
 <body>
 <header class="app-header">ABI Trace Viewer</header>
 <div id="base-info-box">
     <div id="base-symbol-box">A939</div>
-    <div id="base-quality-box">峰高：1197 质量：33</div>
+    <div id="base-quality-box">ピーク高：1197 品質：33</div>
 </div>
 <div id="ab1-file-drag-box" >
     <h1 style="margin-top: 10px;">Drag and drop or click here</h1>
@@ -224,8 +226,9 @@
 </body>
 <script type="module">
 
-    import {FileManager} from "/abi/static/xiaochiPlot/js/filemanager.js"
-    import {Http} from "/abi/static/xiaochiPlot/js/http.js"
+    import {FileManager} from "./static/xiaochiPlot/js/filemanager.js"
+    import {Http} from "./static/xiaochiPlot/js/http.js"
+    import {parseAb1} from "./static/xiaochiPlot/js/abif.js"
 
 
     class AB1 {
@@ -235,14 +238,7 @@
             this.fileManager = new FileManager()
             this.http = new Http()
 
-            this.http.get("/xiaochi/gettoken").then(
-                function (res){
-
-                    console.log(res)
-
-            }).catch(function (err){
-                console.log(err)
-            })
+            // クライアント完結のためトークン取得は不要
 
 
             this.svg = d3.select("#svg");
@@ -259,7 +255,7 @@
 
             this.ab1Data = data
 
-            // 定义画布
+            // 描画キャンバスの定義
             this.width = this.ab1Data.peakData.length;
             this.height = 300;
             this.margin = {top:10, left:10, bottom:80, right:10}
@@ -272,11 +268,11 @@
                 .attr("height",this.height)
 
 
-            //创建一个主绘图组
+            // 主描画グループを作成
             this.maingroup = this.svg.append('g').attr('id',"maingroup")
                 .attr('transform',`translate(${this.margin.left},${this.margin.top})`)
 
-            //创建一个颜色映射
+            // 色マップを作成
             this.colorScale = d3.scaleOrdinal()
                 .domain(this.ab1Data.peakData.channels)
                 .range(["#121112", "#35ce36", "#fc4136", "#4169e0" ])
@@ -295,26 +291,19 @@
             const self = this
             let file_drag_box = d3.select("#ab1-file-drag-box")
 
-            function request(fileList) {
-                file_drag_box
-                .classed("loading",true)
-                let param = new FormData(); // 创建form对象
-                param.append("file", fileList[0]); // 通过append向form对象添加数据
-
-                // param.append("chunk", "别的数据"); // 添加form表单中其他数据
-                console.log(param.get("file")); // FormData私有类对象，访问不到，可以通过get判断值是否传进去
-
-                let config = {
-                    headers: { "Content-Type": "multipart/form-data" }
-                };
-
-                self.http.post("/ChiBioTools/getAb1Data", param, config).then(data=>{
-                    data.baseData = d3.tsvParse(data.baseData, d3.autoType)
-                    self.init(data)
-                    file_drag_box.classed("loading",false)
-                }).catch(err=>{
-                    file_drag_box.classed("loading",false)
-                })
+            async function request(fileList) {
+                try {
+                    file_drag_box.classed("loading", true)
+                    const file = fileList[0]
+                    const buf = await file.arrayBuffer()
+                    const parsed = parseAb1(new Uint8Array(buf), file.name)
+                    parsed.baseData = d3.tsvParse(parsed.baseData, d3.autoType)
+                    self.init(parsed)
+                } catch (err) {
+                    console.error(err)
+                } finally {
+                    file_drag_box.classed("loading", false)
+                }
             }
 
             file_drag_box
@@ -342,7 +331,7 @@
             })
             .on("dragover",function (e){
                 e.preventDefault();//要这个阻止，下面的drop才能触发
-                  //拖入文件后边框颜色变红
+                  // ドラッグ中は枠線色を変更
                 this.style.borderColor = '#ccc';
             }).on("dragleave",function (e){
 
@@ -373,7 +362,7 @@
             console.log(x_max,y_max)
 
 
-            //创建坐标轴
+            // 座標軸の作成（x/y）
             const xScale = d3.scaleLinear().domain([0,x_max]).range([0,this.innerwidth]);
 
             const yScale = d3.scaleLinear().domain([y_max, 0]).range([0, this.innerHeight]);
@@ -381,7 +370,7 @@
             this.xScale = xScale
             this.yScale = yScale
 
-            //创建坐标轴
+            // 座標軸の作成（x/y）
             const yAxis = d3.axisLeft(yScale).tickSizeOuter(0);
             const xAxis = d3.axisBottom(xScale).tickSizeOuter(0);
 
@@ -509,7 +498,7 @@
                 .style("background-color", d3.color(self.baseColorScale(data.base_symbol)).formatRgb().replace(")",",0.8)").replace("rgb","rgba"))
 
                 d3.select("#base-quality-box")
-                .text(`峰高：${self.ab1Data.peakData[base2channels(data.base_symbol)][data.base_location]} 质量：${data.base_quality}`)
+                .text(`ピーク高：${self.ab1Data.peakData[base2channels(data.base_symbol)][data.base_location]} 品質：${data.base_quality}`)
             })
             .on("mouseleave",function (){
                     d3.select(this)

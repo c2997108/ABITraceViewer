@@ -1,10 +1,11 @@
 
+// 簡易 HTTP クライアント（axios ラッパー）
 class Http{
     constructor() {
     }
     get(uri){
         return new Promise((resolve, reject) => {
-            // Prefix base for absolute paths
+            // 絶対パスのときは API ベースパスを前置
             if (typeof uri === 'string' && uri.startsWith('/') && window.API_BASE) {
                 uri = window.API_BASE + uri
             }
@@ -26,6 +27,7 @@ class Http{
     post(uri,param,config){
 
         return new Promise((resolve, reject)=>{
+            // 絶対パスのときは API ベースパスを前置
             if (typeof uri === 'string' && uri.startsWith('/') && window.API_BASE) {
                 uri = window.API_BASE + uri
             }

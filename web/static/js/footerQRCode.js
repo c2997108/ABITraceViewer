@@ -44,7 +44,7 @@ this.createQRCodeApp()
     createQRCodeApp(){
         const self = this
         const BASE = window.ASSET_BASE || window.API_BASE || ''
-        //底部二维码app
+        // フッターのQRコードアプリ
         Vue.createApp({})
             .component("qrcode-box", {
                 data() {
