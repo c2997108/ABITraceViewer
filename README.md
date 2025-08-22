@@ -3,6 +3,7 @@
 <img width="504" alt="image" src="https://github.com/user-attachments/assets/2e77b7a8-17a3-4f7e-afa4-b4b8f82e18f8" />
 
 このリポジトリは、サンガーシーケンスの `.ab1` ファイルをブラウザ内で解析し、波形と配列（FASTA）を表示する静的Webツールです。
+https://c2997108.github.io/ABITraceViewer/
 
 概要
 - エントリーポイント: `index.html`
